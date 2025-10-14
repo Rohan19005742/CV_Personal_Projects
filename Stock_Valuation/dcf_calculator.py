@@ -12,15 +12,6 @@ from typing import Dict, List, Tuple
 
 
 class DCFCalculator:
-    """
-    A comprehensive Discounted Cash Flow (DCF) calculator for stock valuation.
-    
-    The DCF model calculates intrinsic value based on:
-    1. Free Cash Flow projections (5-10 years)
-    2. Terminal Value calculation
-    3. Discount rate (WACC - Weighted Average Cost of Capital)
-    4. Present value calculation
-    """
     
     def __init__(
         self,
@@ -33,28 +24,6 @@ class DCFCalculator:
         cash: float = 0,
         debt: float = 0
     ):
-        """
-        Initialize the DCF Calculator.
-        
-        Parameters:
-        -----------
-        company_name : str
-            Name of the company being valued
-        current_fcf : float
-            Current year Free Cash Flow (in millions)
-        growth_rates : List[float]
-            Year-by-year growth rates for FCF (e.g., [0.15, 0.12, 0.10, 0.08, 0.05])
-        terminal_growth_rate : float
-            Perpetual growth rate after projection period (typically 2-3%)
-        discount_rate : float
-            WACC or required rate of return (e.g., 0.10 for 10%)
-        shares_outstanding : float
-            Number of shares outstanding (in millions)
-        cash : float
-            Cash and cash equivalents (in millions)
-        debt : float
-            Total debt (in millions)
-        """
         self.company_name = company_name
         self.current_fcf = current_fcf
         self.growth_rates = growth_rates
@@ -74,13 +43,6 @@ class DCFCalculator:
         self.intrinsic_value_per_share = 0
         
     def project_fcf(self) -> List[float]:
-        """
-        Project Free Cash Flow for each year based on growth rates.
-        
-        Returns:
-        --------
-        List[float] : Projected FCF for each year
-        """
         fcf = self.current_fcf
         self.projected_fcf = []
         
@@ -91,15 +53,6 @@ class DCFCalculator:
         return self.projected_fcf
     
     def calculate_terminal_value(self) -> float:
-        """
-        Calculate Terminal Value using the Gordon Growth Model.
-        
-        Terminal Value = FCF_final_year * (1 + terminal_growth) / (discount_rate - terminal_growth)
-        
-        Returns:
-        --------
-        float : Terminal Value
-        """
         final_year_fcf = self.projected_fcf[-1]
         self.terminal_value = (
             final_year_fcf * (1 + self.terminal_growth_rate) /
@@ -108,15 +61,6 @@ class DCFCalculator:
         return self.terminal_value
     
     def discount_to_present_value(self) -> Tuple[List[float], float]:
-        """
-        Discount projected FCF and Terminal Value to present value.
-        
-        PV = FCF / (1 + discount_rate) ^ year
-        
-        Returns:
-        --------
-        Tuple[List[float], float] : (List of PV of FCF, PV of Terminal Value)
-        """
         # Discount projected FCF
         self.pv_fcf = []
         for year, fcf in enumerate(self.projected_fcf, start=1):
@@ -130,18 +74,6 @@ class DCFCalculator:
         return self.pv_fcf, self.pv_terminal_value
     
     def calculate_intrinsic_value(self) -> float:
-        """
-        Calculate the intrinsic value per share.
-        
-        Steps:
-        1. Sum PV of projected FCF + PV of Terminal Value = Enterprise Value
-        2. Add Cash, Subtract Debt = Equity Value
-        3. Divide by Shares Outstanding = Intrinsic Value per Share
-        
-        Returns:
-        --------
-        float : Intrinsic value per share
-        """
         # Calculate Enterprise Value
         self.enterprise_value = sum(self.pv_fcf) + self.pv_terminal_value
         
@@ -154,13 +86,6 @@ class DCFCalculator:
         return self.intrinsic_value_per_share
     
     def run_valuation(self) -> Dict:
-        """
-        Run the complete DCF valuation analysis.
-        
-        Returns:
-        --------
-        Dict : Complete valuation results
-        """
         # Step 1: Project FCF
         self.project_fcf()
         
@@ -176,13 +101,6 @@ class DCFCalculator:
         return self.get_results()
     
     def get_results(self) -> Dict:
-        """
-        Get formatted results of the DCF analysis.
-        
-        Returns:
-        --------
-        Dict : Complete DCF results
-        """
         results = {
             'company_name': self.company_name,
             'assumptions': {
@@ -211,7 +129,6 @@ class DCFCalculator:
         return results
     
     def print_summary(self):
-        """Print a formatted summary of the DCF valuation."""
         results = self.get_results()
         
         print(f"\n{'='*70}")
@@ -262,22 +179,6 @@ class DCFCalculator:
         terminal_range: Tuple[float, float] = (0.02, 0.04),
         steps: int = 5
     ) -> pd.DataFrame:
-        """
-        Perform sensitivity analysis on discount rate and terminal growth rate.
-        
-        Parameters:
-        -----------
-        discount_range : Tuple[float, float]
-            Range of discount rates to test
-        terminal_range : Tuple[float, float]
-            Range of terminal growth rates to test
-        steps : int
-            Number of steps in each range
-        
-        Returns:
-        --------
-        pd.DataFrame : Sensitivity analysis results
-        """
         discount_rates = np.linspace(discount_range[0], discount_range[1], steps)
         terminal_rates = np.linspace(terminal_range[0], terminal_range[1], steps)
         
@@ -311,9 +212,6 @@ class DCFCalculator:
 
 
 def example_valuation():
-    """
-    Example DCF valuation for a hypothetical technology company.
-    """
     print("\n" + "="*70)
     print("EXAMPLE: DCF VALUATION OF TECH COMPANY XYZ")
     print("="*70)
@@ -349,3 +247,4 @@ def example_valuation():
 if __name__ == "__main__":
     # Run example valuation
     example_valuation()
+
