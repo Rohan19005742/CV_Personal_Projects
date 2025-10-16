@@ -26,6 +26,32 @@ def generate_linear_regression_data(
         "Salary": salary
     })
 
+def generate_titanic_data(
+    n_samples: int = 100,
+    seed: int = 42
+) -> pd.DataFrame:
+    np.random.seed(seed)
+
+    pclass = np.random.choice([1, 2, 3], n_samples)
+    age = np.random.uniform(0.42, 80, n_samples)
+    sibsp = np.random.randint(0, 9, n_samples)
+    parch = np.random.randint(0, 7, n_samples)
+    fare = np.random.uniform(5, 512, n_samples)
+    distance_to_evacuation_boats = np.random.uniform(0.1, 100, n_samples)
+    speed = np.random.uniform(0.5, 30, n_samples)
+    survived = np.random.choice([0, 1], n_samples)
+
+    return pd.DataFrame({
+        "Pclass": pclass,
+        "Age": age,
+        "SibSp": sibsp,
+        "Parch": parch,
+        "Fare": fare,
+        "DistanceToEvacuationBoats": distance_to_evacuation_boats,
+        "Speed": speed,
+        "Survived": survived
+    })
+
 
 def save_dataset(
     data: pd.DataFrame,
@@ -36,8 +62,8 @@ def save_dataset(
 
 
 def main() -> None:
-    data = generate_linear_regression_data(n_samples=100)
-    save_dataset(data)
+    data = generate_titanic_data(n_samples=100)
+    save_dataset(data, filename="titanic_synthetic_data.csv")
 
 
 if __name__ == "__main__":
