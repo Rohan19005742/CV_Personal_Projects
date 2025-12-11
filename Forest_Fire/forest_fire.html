@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Drossel–Schwabl Forest Fire Model</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      margin: 16px 0 8px;
+      font-size: 22px;
+      text-align: center;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: min(900px, 100vw - 20px);
+      margin-bottom: 20px;
+    }
+
+    #controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      background: #1b1b1b;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+    }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .value {
+      font-variant-numeric: tabular-nums;
+      color: #9fd3ff;
+      font-size: 11px;
+    }
+
+    button {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #222;
+      color: #eee;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s, transform 0.05s;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    button.primary {
+      background: #0c5;
+      border-color: #0b4;
+      color: #020;
+    }
+
+    button.primary:hover {
+      background: #0e7;
+    }
+
+    #canvas-wrapper {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #333;
+      background: #000;
+    }
+
+    #stats {
+      font-size: 11px;
+      color: #bbb;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 0 2px;
+    }
+
+    #stats span {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <h1>Drossel–Schwabl Forest Fire Model</h1>
+  <div id="container">
+    <div id="controls">
+      <div class="control-group">
+        <label>
+          Grid size
+          <span class="value" id="gridSizeValue"></span>
+        </label>
+        <input type="range" id="gridSize" min="300" max="300" step="0" value="300" />
+      </div>
+
+      <div class="control-group">
+        <label>
+          Tree growth p
+          <span class="value" id="pValue"></span>
+        </label>
+        <input type="range" id="p" min="0" max="0.05" step="0.0005" value="0.01" />
+      </div>
+
+      <div class="control-group">
+        <label>
+          Lightning f
+          <span class="value" id="fValue"></span>
+        </label>
+        <input type="range" id="f" min="0" max="0.003" step="0.0001" value="0.0005" />
+      </div>
+
+      <div class="control-group">
+        <label>
+          Initial tree density
+          <span class="value" id="densityValue"></span>
+        </label>
+        <input type="range" id="density" min="0" max="1" step="0.05" value="0.6" />
+      </div>
+
+      <div class="control-group">
+        <label>
+          Simulation speed
+          <span class="value" id="speedValue"></span>
+        </label>
+        <input type="range" id="speed" min="1" max="1000" step="1" value="30" />
+      </div>
+
+      <div class="control-group">
+        <label>Controls</label>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <button id="toggleBtn" class="primary">Pause</button>
+          <button id="stepBtn">Step</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="canvas-wrapper">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="stats">
+      <span>Step: <span id="stepCount">0</span></span>
+      <span>Trees: <span id="treeCount">0</span></span>
+      <span>Burning: <span id="burningCount">0</span></span>
+      <span>Empty: <span id="emptyCount">0</span></span>
+    </div>
+  </div>
+
+  <script>
+    // --- States ---
+    const EMPTY = 0;
+    const TREE = 1;
+    const BURNING = 2;
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // Controls
+    const gridSizeInput = document.getElementById("gridSize");
+    const pInput = document.getElementById("p");
+    const fInput = document.getElementById("f");
+    const densityInput = document.getElementById("density");
+    const speedInput = document.getElementById("speed");
+
+    const gridSizeValue = document.getElementById("gridSizeValue");
+    const pValue = document.getElementById("pValue");
+    const fValue = document.getElementById("fValue");
+    const densityValue = document.getElementById("densityValue");
+    const speedValue = document.getElementById("speedValue");
+
+    const toggleBtn = document.getElementById("toggleBtn");
+    const stepBtn = document.getElementById("stepBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    // Stats
+    const stepCountEl = document.getElementById("stepCount");
+    const treeCountEl = document.getElementById("treeCount");
+    const burningCountEl = document.getElementById("burningCount");
+    const emptyCountEl = document.getElementById("emptyCount");
+
+    // Simulation state
+    let N = parseInt(gridSizeInput.value, 10);
+    let p = parseFloat(pInput.value);
+    let f = parseFloat(fInput.value);
+    let density = parseFloat(densityInput.value);
+    let speed = parseInt(speedInput.value, 10);
+
+    let grid = [];
+    let nextGrid = [];
+    let cellSize;
+    let running = true;
+    let frameRequest = null;
+    let lastUpdate = 0;
+    let step = 0;
+    let neighborFireProb = 1; // Probability that a tree catches fire from a burning neighbor
+
+    function updateLabels() {
+      gridSizeValue.textContent = N + " × " + N;
+      pValue.textContent = p.toFixed(4);
+      fValue.textContent = f.toFixed(4);
+      densityValue.textContent = density.toFixed(2);
+      speedValue.textContent = speed + " steps/s";
+    }
+
+    function resizeCanvas() {
+      const wrapper = document.getElementById("canvas-wrapper");
+      const size = Math.min(wrapper.clientWidth, 600);
+      canvas.width = size;
+      canvas.height = size;
+      cellSize = canvas.width / N;
+    }
+
+    function createGrid() {
+      grid = new Array(N);
+      nextGrid = new Array(N);
+      for (let y = 0; y < N; y++) {
+        grid[y] = new Array(N);
+        nextGrid[y] = new Array(N);
+        for (let x = 0; x < N; x++) {
+          grid[y][x] = Math.random() < density ? TREE : EMPTY;
+          nextGrid[y][x] = EMPTY;
+        }
+      }
+      step = 0;
+    }
+
+    function resetSimulation() {
+      N = parseInt(gridSizeInput.value, 10);
+      p = parseFloat(pInput.value);
+      f = parseFloat(fInput.value);
+      density = parseFloat(densityInput.value);
+      speed = parseInt(speedInput.value, 10);
+      updateLabels();
+      resizeCanvas();
+      createGrid();
+      draw();
+      updateStats();
+    }
+
+    function stepSimulation() {
+      let burningExists;
+
+      // Perform at least one step; keep burning until out of fire if cascade mode is on
+      do {
+        burningExists = false;
+
+        const Nlocal = N;
+        let treeCount = 0;
+        let burningCount = 0;
+        let emptyCount = 0;
+
+        for (let y = 0; y < Nlocal; y++) {
+          for (let x = 0; x < Nlocal; x++) {
+            const state = grid[y][x];
+
+            if (state === BURNING) {
+              nextGrid[y][x] = EMPTY;
+            }
+            else if (state === TREE) {
+              let neighborBurning = false;
+
+              for (let dy = -1; dy <= 1 && !neighborBurning; dy++) {
+                for (let dx = -1; dx <= 1 && !neighborBurning; dx++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const ny = y + dy, nx = x + dx;
+                  if (ny >= 0 && ny < Nlocal && nx >= 0 && nx < Nlocal) {
+                    if (grid[ny][nx] === BURNING) neighborBurning = true;
+                  }
+                }
+              }
+
+              if (neighborBurning && Math.random() < neighborFireProb) {
+                nextGrid[y][x] = BURNING;
+              }
+              else if (Math.random() < f) {
+                nextGrid[y][x] = BURNING;
+              }
+              else {
+                nextGrid[y][x] = TREE;
+              }
+            }
+            else { // EMPTY
+              nextGrid[y][x] = Math.random() < p ? TREE : EMPTY;
+            }
+
+            // Statistics
+            const s2 = nextGrid[y][x];
+            if (s2 === TREE) treeCount++;
+            else if (s2 === BURNING) {
+              burningExists = true;
+              burningCount++;
+            }
+            else emptyCount++;
+          }
+        }
+
+        // Swap grids
+        [grid, nextGrid] = [nextGrid, grid];
+
+        // Update running stats only once per external step
+        if (!cascadeMode.checked || !burningExists) {
+          step++;
+          stepCountEl.textContent = step;
+          treeCountEl.textContent = treeCount;
+          burningCountEl.textContent = burningCount;
+          emptyCountEl.textContent = emptyCount;
+        }
+
+      } while (cascadeMode.checked && burningExists);
+    }
+
+    function updateStats() {
+      let treeCount = 0;
+      let burningCount = 0;
+      let emptyCount = 0;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const s = grid[y][x];
+          if (s === TREE) treeCount++;
+          else if (s === BURNING) burningCount++;
+          else emptyCount++;
+        }
+      }
+      stepCountEl.textContent = step;
+      treeCountEl.textContent = treeCount;
+      burningCountEl.textContent = burningCount;
+      emptyCountEl.textContent = emptyCount;
+    }
+
+    function draw() {
+      const size = cellSize;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const state = grid[y][x];
+          if (state === EMPTY) {
+            ctx.fillStyle = "#000000";
+          } else if (state === TREE) {
+            ctx.fillStyle = "#0c7a2a"; // green
+          } else if (state === BURNING) {
+            ctx.fillStyle = "#ff5500"; // orange/red
+          }
+          ctx.fillRect(x * size, y * size, size, size);
+        }
+      }
+    }
+
+    function loop(timestamp) {
+      if (!running) {
+        frameRequest = requestAnimationFrame(loop);
+        return;
+      }
+
+      const dt = timestamp - lastUpdate;
+      const targetMsPerStep = 1000 / speed;
+
+      if (dt >= targetMsPerStep) {
+        lastUpdate = timestamp;
+        stepSimulation();
+        draw();
+      }
+
+      frameRequest = requestAnimationFrame(loop);
+    }
+
+    // Event listeners
+    gridSizeInput.addEventListener("input", () => {
+      N = parseInt(gridSizeInput.value, 10);
+      updateLabels();
+    });
+
+    pInput.addEventListener("input", () => {
+      p = parseFloat(pInput.value);
+      updateLabels();
+    });
+
+    fInput.addEventListener("input", () => {
+      f = parseFloat(fInput.value);
+      updateLabels();
+    });
+
+    densityInput.addEventListener("input", () => {
+      density = parseFloat(densityInput.value);
+      updateLabels();
+    });
+
+    speedInput.addEventListener("input", () => {
+      speed = parseInt(speedInput.value, 10);
+      updateLabels();
+    });
+
+    toggleBtn.addEventListener("click", () => {
+      running = !running;
+      toggleBtn.textContent = running ? "Pause" : "Run";
+      toggleBtn.classList.toggle("primary", running);
+    });
+
+    stepBtn.addEventListener("click", () => {
+      if (!running) {
+        stepSimulation();
+        draw();
+      }
+    });
+
+    resetBtn.addEventListener("click", () => {
+      resetSimulation();
+    });
+
+    window.addEventListener("resize", () => {
+      resizeCanvas();
+      draw();
+    });
+
+    // Init
+    updateLabels();
+    resizeCanvas();
+    createGrid();
+    draw();
+    updateStats();
+    frameRequest = requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
