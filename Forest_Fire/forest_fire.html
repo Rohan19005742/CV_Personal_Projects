@@ -278,75 +278,69 @@
     }
 
     function stepSimulation() {
-      let burningExists;
+      const Nlocal = N;
+      let treeCount = 0;
+      let burningCount = 0;
+      let emptyCount = 0;
 
-      // Perform at least one step; keep burning until out of fire if cascade mode is on
-      do {
-        burningExists = false;
-
-        const Nlocal = N;
-        let treeCount = 0;
-        let burningCount = 0;
-        let emptyCount = 0;
-
-        for (let y = 0; y < Nlocal; y++) {
-          for (let x = 0; x < Nlocal; x++) {
-            const state = grid[y][x];
+      for (let y = 0; y < Nlocal; y++) {
+        for (let x = 0; x < Nlocal; x++) {
+          const state = grid[y][x];
 
             if (state === BURNING) {
-              nextGrid[y][x] = EMPTY;
+                // Burning cell becomes empty
+                nextGrid[y][x] = EMPTY;
             }
-            else if (state === TREE) {
-              let neighborBurning = false;
-
-              for (let dy = -1; dy <= 1 && !neighborBurning; dy++) {
-                for (let dx = -1; dx <= 1 && !neighborBurning; dx++) {
-                  if (dx === 0 && dy === 0) continue;
-                  const ny = y + dy, nx = x + dx;
-                  if (ny >= 0 && ny < Nlocal && nx >= 0 && nx < Nlocal) {
-                    if (grid[ny][nx] === BURNING) neighborBurning = true;
+            if (state === TREE) {
+            // Check if any neighbor is burning
+            let neighborBurning = false;
+            for (let dy = -1; dy <= 1 && !neighborBurning; dy++) {
+              for (let dx = -1; dx <= 1 && !neighborBurning; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const ny = y + dy;
+                const nx = x + dx;
+                if (ny >= 0 && ny < Nlocal && nx >= 0 && nx < Nlocal) {
+                  if (grid[ny][nx] === BURNING) {
+                    neighborBurning = true;
                   }
                 }
               }
-
-              if (neighborBurning && Math.random() < neighborFireProb) {
-                nextGrid[y][x] = BURNING;
-              }
-              else if (Math.random() < f) {
-                nextGrid[y][x] = BURNING;
-              }
-              else {
-                nextGrid[y][x] = TREE;
-              }
-            }
-            else { // EMPTY
-              nextGrid[y][x] = Math.random() < p ? TREE : EMPTY;
             }
 
-            // Statistics
-            const s2 = nextGrid[y][x];
-            if (s2 === TREE) treeCount++;
-            else if (s2 === BURNING) {
-              burningExists = true;
-              burningCount++;
+            if (neighborBurning && Math.random() < neighborFireProb) {
+              nextGrid[y][x] = BURNING;
+            } else if (Math.random() < f) {
+              // Lightning strike
+              nextGrid[y][x] = BURNING;
+            } else {
+              nextGrid[y][x] = TREE;
             }
-            else emptyCount++;
+          } else {
+            // Empty cell: grow tree with probability p
+            if (Math.random() < p) {
+              nextGrid[y][x] = TREE;
+            } else {
+              nextGrid[y][x] = EMPTY;
+            }
           }
+
+          const newState = nextGrid[y][x];
+          if (newState === TREE) treeCount++;
+          else if (newState === BURNING) burningCount++;
+          else emptyCount++;
         }
+      }
 
-        // Swap grids
-        [grid, nextGrid] = [nextGrid, grid];
+      // Swap grids
+      const tmp = grid;
+      grid = nextGrid;
+      nextGrid = tmp;
 
-        // Update running stats only once per external step
-        if (!cascadeMode.checked || !burningExists) {
-          step++;
-          stepCountEl.textContent = step;
-          treeCountEl.textContent = treeCount;
-          burningCountEl.textContent = burningCount;
-          emptyCountEl.textContent = emptyCount;
-        }
-
-      } while (cascadeMode.checked && burningExists);
+      step++;
+      stepCountEl.textContent = step;
+      treeCountEl.textContent = treeCount;
+      burningCountEl.textContent = burningCount;
+      emptyCountEl.textContent = emptyCount;
     }
 
     function updateStats() {
