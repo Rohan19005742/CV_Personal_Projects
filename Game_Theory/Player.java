@@ -38,4 +38,12 @@ public abstract class Player {
     public String displayName() {
         return String.format("%s (%.1f%%)", name, winPercentage());
     }
+
+    public void reset(){
+        totalScore = 0;
+        wins = 0;
+        games = 0;
+    }
+
+    public abstract String getStrategy();
 }

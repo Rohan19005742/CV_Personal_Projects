@@ -15,6 +15,10 @@ public class RandomPlayer extends Player {
         } else {
             return Moves.DEFECT;
         }
+    }    
+
+    @Override
+    public String getStrategy() {
+        return "Random: " + String.format("%.1f%%", super.getGoodPercentage() * 100);
     }
-    
 }

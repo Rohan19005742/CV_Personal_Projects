@@ -17,6 +17,10 @@ public class Tournament {
     }
 
     public void run() {
+        for (Player p : players) {
+            p.reset();
+        }
+        
         for (int i = 0; i < players.size(); i++) {
             for (int j = i + 1; j < players.size(); j++) {
 
@@ -39,19 +43,22 @@ public class Tournament {
             .sorted(Comparator.comparingInt((Player p) -> p.totalScore).reversed())
             .toList();
 
+        System.err.println("Leaderboard for Game: " + game.getName());
+
         System.out.printf(
-            "%-4s %-12s %-12s %-6s %-8s %-6s%n",
-            "Pos", "Name", "TotalScore", "Wins", "Win%", "Games"
+            "%-4s %-12s %-20s %-12s %-6s %-8s %-6s%n",
+            "Pos", "Name", "Strategy", "TotalScore", "Wins", "Win%", "Games"
         );
-        System.out.println("--------------------------------------------------");
+        System.out.println("-------------------------------------------------------------------------");
 
         for (int i = 0; i < sorted.size(); i++) {
             Player p = sorted.get(i);
 
             System.out.printf(
-                "%-4d %-12s %-12d %-6d %-7.1f %-6d%n",
+                "%-4d %-12s %-20s %-12s %-6d %-7.1f %-6d%n",
                 i + 1,
                 p.getName(),
+                p.getStrategy(),
                 p.totalScore,
                 p.wins,
                 p.winPercentage(),
@@ -59,7 +66,6 @@ public class Tournament {
             );
         }
     }
-
 
 }
 
